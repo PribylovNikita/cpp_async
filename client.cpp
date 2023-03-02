@@ -11,9 +11,11 @@ enum { max_length = 1024 };
 
 class Client{
 public:
-    Client() {}
+    Client()
+    : socket(tcp::socket(io_context)), resolver(tcp::resolver(io_context))
+    {}
 
-    int connect(char host[], char port[]) {
+    void connect(char host[], char port[]) {
         try {
             boost::asio::connect(socket, resolver.resolve(host, port));
         } catch(std::exception& e) {
@@ -44,8 +46,8 @@ public:
 
 private:
     boost::asio::io_context io_context;
-    tcp::socket socket = tcp::socket(io_context);
-    tcp::resolver resolver = tcp::resolver(io_context);
+    tcp::socket socket;
+    tcp::resolver resolver;
 };
 
 void do_work(char host[], char port[], char request[], int cycles) {
@@ -81,5 +83,5 @@ int main(int argc, char* argv[]) {
         std::cerr << "Exception: " << e.what() << "\n";
     }
 
-  return 0;
+    return 0;
 }

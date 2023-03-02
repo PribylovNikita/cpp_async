@@ -10,10 +10,9 @@ class session
         : public std::enable_shared_from_this<session>
 {
 public:
-    session(tcp::socket socket)
-    : socket_(std::move(socket)) {
-        std::cout << "connection established" << std::endl;
-        std::cout << this << std::endl;
+    session(tcp::socket socket, size_t session_number = 0)
+    : socket_(std::move(socket)), session_number(session_number) {
+        std::cout << "connection established: " << session_number << std::endl;
     }
 
     void start() {
@@ -21,13 +20,12 @@ public:
     }
 
     ~session() {
-        std::cout << "connection lost" << std::endl;
+        std::cout << "connection lost: " << session_number << std::endl;
     }
 
 private:
     void do_read()
     {
-        //std::cout << "do_read" << std::endl;
         auto self(shared_from_this());
         socket_.async_read_some(boost::asio::buffer(data_, max_length),
                                 [this, self](boost::system::error_code ec, std::size_t length) {
@@ -35,11 +33,9 @@ private:
                 do_write(length);
             }
         });
-        //std::cout << "do_read end" << std::endl;
     }
 
     void do_write(std::size_t length) {
-        //std::cout << "do_write" << std::endl;
         auto self(shared_from_this());
         boost::asio::async_write(socket_, boost::asio::buffer(data_, length),
                                [this, self](boost::system::error_code ec, std::size_t /*length*/) {
@@ -47,12 +43,12 @@ private:
                 do_read();
             }
         });
-        //std::cout << "do_write end" << std::endl;
     }
 
     tcp::socket socket_;
     enum { max_length = 1024 };
     char data_[max_length];
+    size_t session_number;
 };
 
 class server
@@ -65,42 +61,33 @@ public:
 
 private:
     void do_accept() {
-        std::cout << "do_accept" << std::endl;
         acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) {
             if (!ec) {
-                auto p_session = std::make_shared<session>(std::move(socket));
-                std::cout << p_session << " session" << std::endl;
-                p_session->start();
+                std::make_shared<session>(std::move(socket), ++latest_session_number)->start();
             }
 
             do_accept();
         });
-        std::cout << "do_accept end" << std::endl;
     }
 
     tcp::acceptor acceptor_;
+    size_t latest_session_number = 0;
 };
 
-int main(int argc, char* argv[])
-{
-  try
-  {
-    if (argc != 2)
-    {
-      std::cerr << "Usage: async_tcp_echo_server <port>\n";
-      return 1;
+int main(int argc, char* argv[]) {
+    try {
+        if (argc != 2) {
+            std::cerr << "Usage: async_tcp_echo_server <port>\n";
+            return 1;
+        }
+
+        boost::asio::io_context io_context;
+        server s(io_context, std::atoi(argv[1]));
+        io_context.run();
+
+    } catch (std::exception& e) {
+        std::cerr << "Exception: " << e.what() << "\n";
     }
 
-    boost::asio::io_context io_context;
-
-    server s(io_context, std::atoi(argv[1]));
-
-    io_context.run();
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "Exception: " << e.what() << "\n";
-  }
-
-  return 0;
+    return 0;
 }
