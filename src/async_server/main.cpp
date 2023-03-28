@@ -3,7 +3,6 @@
 #include <memory>
 #include <utility>
 #include <boost/asio.hpp>
-#include <signal.h>
 
 using boost::asio::ip::tcp;
 
@@ -75,10 +74,6 @@ private:
     int latest_session_id;
 };
 
-
-void onexit(boost::asio::io_context& io_context) {
-    std::cout << io_context.stopped();
-}
 
 int main(int argc, char* argv[]) {
     try {
