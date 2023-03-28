@@ -4,6 +4,7 @@
 #include <boost/asio.hpp>
 #include <thread>
 #include <vector>
+#include <string>
 
 using boost::asio::ip::tcp;
 
@@ -15,19 +16,19 @@ public:
     : socket(tcp::socket(io_context)), resolver(tcp::resolver(io_context))
     {}
 
-    boost::system::error_code connect(const char host[], const char port[]) {
+    boost::system::error_code connect(const std::string& host, const std::string& port) {
         boost::asio::connect(socket, resolver.resolve(host, port), connect_ec);
         return connect_ec;
     }
 
-    int send_and_receive(const char request[]){
+    int send_and_receive(const std::string& request){
         if (connect_ec) {
             std::cerr << "Connection is not established, use connect() first.\n";
             return -1;
         }
 
         try {
-            size_t request_length = std::strlen(request);
+            size_t request_length = request.length();
             boost::asio::write(socket, boost::asio::buffer(request, request_length));
 
             char reply[max_length];
@@ -50,7 +51,7 @@ private:
     boost::system::error_code connect_ec;
 };
 
-int connect_send_and_receive(char host[], char port[], char request[], int cycles) {
+int connect_send_and_receive(const std::string& host, const std::string& port, const std::string& request, int cycles) {
     Client client;
     client.connect(host, port);
     for (int j = 0; j < cycles; j++) {
@@ -66,11 +67,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        char *host = argv[1];
-        char *port = argv[2];
+        const std::string host = argv[1];
+        const std::string port = argv[2];
         int threads_amount = std::atoi(argv[3]);
         int cycles = std::atoi(argv[4]);
-        char msg[] = "echo echo";
+        const std::string msg = "echo echo";
 
         std::vector<std::thread> threads;
         for (int i = 0; i < threads_amount; i++) {
